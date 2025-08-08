@@ -1,0 +1,6 @@
+streamlit
+sounddevice
+numpy
+faster-whisper
+matplotlib
+fugashi[unidic-lite]
