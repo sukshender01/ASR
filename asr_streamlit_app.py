@@ -12,13 +12,11 @@ LANG = "ja"
 SPLIT = "train"
 SAMPLERATE = 16000
 
-# ---- LOAD MODELS ----
 @st.cache_resource
 def load_models():
     asr = whisper.load_model("small")
     tokenizer = AutoTokenizer.from_pretrained("facebook/mbart-large-50-many-to-many-mmt")
     model = AutoModelForSeq2SeqLM.from_pretrained("facebook/mbart-large-50-many-to-many-mmt")
-    # English TTS model
     tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2")
     return asr, tokenizer, model, tts
 
@@ -37,7 +35,7 @@ def estimate_token_delays(ref_tokens, hyp_tokens):
     hyp = hyp_tokens.tolist()
     for i, h in enumerate(hyp):
         try:
-            delay = abs(i - ref.index(h))  # output index - input token match
+            delay = abs(i - ref.index(h))
         except ValueError:
             delay = len(ref)
         delays.append(delay)
@@ -73,9 +71,9 @@ def translate_text(text, tokenizer, model):
 def main():
     st.set_page_config(page_title="Streaming Speech Translator + Metrics", layout="centered")
     st.title("🇯🇵📡 Japanese Speech Translator with WAV Output & Metrics")
-    st.caption("Transcribes, translates, synthesizes and evaluates in real time.")
+    st.caption("Transcribes, translates, synthesizes and evaluates in real time using Common Voice (JA).")
 
-    num_samples = st.number_input("Number of samples to process", min_value=1, max_value=20, value=5)
+    num_samples = st.number_input("Number of samples to process", min_value=1, max_value=10, value=3)
     output_dir = st.text_input("Output folder", value="translation_tts_metrics_results")
     os.makedirs(output_dir, exist_ok=True)
 
@@ -93,11 +91,9 @@ def main():
 
             translated, metrics = translate_text(transcription, translation_tokenizer, translation_model)
 
-            # Generate WAV file from translated text (TTS)
             wav_path = os.path.join(output_dir, f"sample_{idx+1}_translated.wav")
             tts.tts_to_file(text=translated, file_path=wav_path, language="en")
 
-            # Save text & metrics for reference
             text_path = os.path.join(output_dir, f"sample_{idx+1}_results.txt")
             with open(text_path, "w", encoding="utf-8") as f:
                 f.write(f"Transcription: {transcription}\n")
@@ -110,13 +106,11 @@ def main():
             percent = int((idx + 1) * 100 / num_samples)
             my_bar.progress(percent, text=f"{idx+1}/{num_samples} processed")
 
-            # Show full result for each sample
             st.markdown(f"### Sample {idx+1}")
             st.write(f"**Transcription:** {transcription}")
             st.write(f"**Translation:** {translated}")
             st.audio(wav_path, format="audio/wav", start_time=0)
 
-            # Show metrics
             m = metrics
             st.subheader("📊 Evaluation Metrics")
             st.markdown(f"- **Source Language**: `{m['src_lang']}`")
@@ -125,8 +119,7 @@ def main():
             st.markdown(f"- **Token Accuracy**: `{m['accuracy'] * 100:.2f}%`")
             st.markdown(f"- **BLEU Score**: `{m['bleu'] * 100:.2f}%`")
             st.markdown(f"- **Token Delay Values**: `{m['token_delay']}`")
-
-            st.divider()  # For visual separation
+            st.divider()
 
         my_bar.empty()
         st.success(f"Done! All translations and metrics saved in `{output_dir}`.")
